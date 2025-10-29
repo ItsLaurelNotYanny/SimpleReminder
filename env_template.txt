@@ -1,0 +1,9 @@
+# Exchange Rate API Configuration (OPTIONAL)
+# The script uses Frankfurter API by default (no key needed)
+# This backup API key is only used if Frankfurter fails
+
+# Copy this file to .env and add your actual API key for backup
+# Get your free API key from: https://www.exchangerate-api.com/
+
+# EXCHANGE_RATE_API_KEY=your_api_key_here
+

@@ -1,0 +1,7 @@
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# Optional: Cross-platform notifications (mainly for Windows)
+# macOS and Linux use native system commands
+plyer>=2.0.0; platform_system=="Windows"
+
