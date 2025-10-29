@@ -4,7 +4,7 @@
 [![Python 3.6+](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)](https://github.com)
 
-A smart notification system that monitors exchange rates and alerts you when thresholds are crossed. Perfect for catching the best currency exchange opportunities!
+A smart notification system that monitors real-time exchange rates—alerting you when opportunities arise. Support for stocks and crypto coming soon.
 
 ## Features
 
