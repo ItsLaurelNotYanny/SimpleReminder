@@ -24,6 +24,9 @@ You'll see output like:
 ### 3. Run the Monitor
 ```bash
 ./venv/bin/python exchange_rate_reminder.py
+
+# Optional: enable macOS autostart
+./venv/bin/python exchange_rate_reminder.py --install-autostart
 ```
 
 ## Monthly Maintenance
@@ -37,6 +40,10 @@ python update_thresholds.py
 ```
 
 Then restart the monitor if it's running in background.
+
+Notes:
+- If you forget to update on the 1st, the monitor will send a weekly reminder until thresholds are updated this month.
+- On macOS, notifications use `terminal-notifier` when available and also play a system sound via `afplay` to ensure you can hear the alert.
 
 ## Understanding Your Notifications
 

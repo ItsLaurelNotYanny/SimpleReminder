@@ -10,6 +10,7 @@ A smart notification system that monitors real-time exchange rates—alerting yo
 
 - 📊 **Real-time Exchange Rate Monitoring** - Tracks 5 currency pairs
 - 🔔 **Cross-Platform Notifications** - Native alerts on macOS, Linux, and Windows
+  - macOS 现已优先使用 `terminal-notifier`，并在必要时使用 `afplay` 兜底播放系统音效，确保可听见的提示音
 - 🤖 **Dynamic Thresholds** - Auto-calculated based on historical data (10th percentile)
 - 🔑 **Secure API Key Management** - Uses `.env` file for credentials
 - ⚡ **Efficient Resource Usage** - Minimal CPU and network overhead
@@ -166,6 +167,8 @@ python update_thresholds.py
 
 **Automatic reminder**: The monitor will remind you on the 1st of each month to update thresholds.
 
+Additionally, if you don't update on the 1st, the monitor will send a weekly reminder until thresholds are updated for the current month.
+
 **Manual update anytime**:
 ```bash
 python update_thresholds.py
@@ -201,6 +204,14 @@ python exchange_rate_reminder.py
 
 # Or run directly with venv Python (without activation)
 ./venv/bin/python exchange_rate_reminder.py
+
+# Optional: manage macOS autostart (launchd)
+# Install and load on login
+./venv/bin/python exchange_rate_reminder.py --install-autostart
+# Check status
+./venv/bin/python exchange_rate_reminder.py --autostart-status
+# Remove autostart
+./venv/bin/python exchange_rate_reminder.py --remove-autostart
 ```
 
 ### What Happens
@@ -294,7 +305,7 @@ Only used when Frankfurter API fails. Same rate calculations apply.
 
 ## Run in Background (macOS)
 
-### Using nohup with venv
+### Using nohup with venv (simple)
 
 ```bash
 # Make sure you're in the project directory
@@ -315,7 +326,13 @@ pkill -f exchange_rate_reminder.py
 
 ### Using launchd (Auto-start on login)
 
-1. Create `~/Library/LaunchAgents/com.user.exchangerate.plist`:
+1. You can either use the built-in flags:
+
+```bash
+./venv/bin/python exchange_rate_reminder.py --install-autostart
+```
+
+2. Or manually create `~/Library/LaunchAgents/com.user.exchangerate.plist`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -415,9 +432,9 @@ pip install -r requirements.txt
 The system uses the most reliable notification method for each platform:
 
 **macOS (Darwin)**
-- ✅ Uses native `osascript` for AppleScript notifications
-- ✅ Appears in Notification Center
-- ✅ No external dependencies required
+- ✅ Uses `terminal-notifier` when available for native notifications (better visibility)
+- ✅ Falls back to AppleScript `osascript` if not available
+- ✅ Plays a reliable chime using `afplay` to ensure an audible cue even when the notifier sound is muted
 
 **Linux**
 - ✅ Uses `notify-send` command
@@ -430,7 +447,7 @@ The system uses the most reliable notification method for each platform:
 - ℹ️ Installed automatically during setup
 
 **Graceful Degradation**
-- If native notifications fail on any platform, the system falls back to console output
+- If native notifications fail on any platform, the system falls back to console output; on macOS an additional `afplay` sound is attempted
 - Monitoring continues uninterrupted
 
 ---

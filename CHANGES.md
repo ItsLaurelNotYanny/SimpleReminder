@@ -31,10 +31,11 @@
 ### Modified Files
 
 1. **exchange_rate_reminder.py**
-   - Added dynamic threshold loading
-   - Fallback to static defaults
-   - Monthly update reminder
-   - Integration with threshold_calculator
+   - Added dynamic threshold loading (with static fallback)
+   - Prefer `terminal-notifier` on macOS, fallback to AppleScript; added `afplay` sound fallback
+   - Monthly update reminder via system notification; weekly follow-ups if not updated
+   - Added macOS autostart management flags (`--install-autostart`, `--remove-autostart`, `--autostart-status`)
+   - Integration with `threshold_calculator`
 
 2. **README.md**
    - New "Dynamic Thresholds" section

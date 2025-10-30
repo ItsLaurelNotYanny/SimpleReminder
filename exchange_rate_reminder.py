@@ -6,7 +6,11 @@ import requests
 import time
 import subprocess
 import os
-from datetime import datetime
+import shutil
+import json
+import argparse
+from pathlib import Path
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from threshold_calculator import DynamicThresholdCalculator
 
@@ -25,6 +29,12 @@ class Config:
     
     # Notification settings
     NOTIFICATION_TIMEOUT = 10
+    # macOS sound name for terminal-notifier and fallback afplay
+    # Common sounds: Basso, Blow, Bottle, Frog, Funk, Glass, Hero,
+    # Morse, Ping, Pop, Purr, Sosumi, Submarine, Tink
+    MACOS_SOUND_NAME = "Glass"
+    # If terminal-notifier doesn't play a sound, also play via afplay
+    MACOS_FORCE_SOUND_WITH_AFLAY = True
     
     @property
     def CHECK_INTERVAL_SECONDS(self):
@@ -90,9 +100,32 @@ BASE_CURRENCIES = set(pair.split('/')[0] for pair in RULES.keys())
 # ============================================================================
 
 def _notify_macos(title, message):
-    """Send notification on macOS using osascript"""
-    apple_script = f'display notification "{message}" with title "{title}"'
-    subprocess.run(['osascript', '-e', apple_script], check=True)
+    """Send notification on macOS.
+    Prefer terminal-notifier (if available) for better visibility/sound,
+    and fall back to AppleScript otherwise.
+    """
+    abs_notifier = "/opt/homebrew/bin/terminal-notifier"
+    notifier_path = abs_notifier if os.path.exists(abs_notifier) else shutil.which('terminal-notifier')
+    if notifier_path:
+        sound_name = getattr(config, 'MACOS_SOUND_NAME', 'Glass') or 'Glass'
+        subprocess.run([
+            notifier_path,
+            '-title', title,
+            '-message', message,
+            '-sound', sound_name,
+        ], check=True)
+        # Optional: force sound using afplay in case notification sound is muted by system policy
+        if getattr(config, 'MACOS_FORCE_SOUND_WITH_AFLAY', False):
+            sound_path = f"/System/Library/Sounds/{sound_name}.aiff"
+            if os.path.exists(sound_path):
+                try:
+                    subprocess.run(['/usr/bin/afplay', sound_path], check=False)
+                except Exception:
+                    pass
+        return
+    # Fallback to AppleScript (use explicit path and JSON to safely escape)
+    apple_script = f'display notification {json.dumps(message)} with title {json.dumps(title)}'
+    subprocess.run(['/usr/bin/osascript', '-e', apple_script], check=True)
 
 
 def _notify_linux(title, message):
@@ -118,6 +151,36 @@ NOTIFIERS = {
     "Linux": _notify_linux,
     "Windows": _notify_windows,
 }
+
+
+# Lightweight info notification wrapper and reminder state
+MONTHLY_REMINDER_SHOWN = False  # show monthly reminder at most once per run
+NEXT_WEEKLY_REMINDER_AT = None  # schedule weekly follow-ups until updated
+
+def notify_info(title, message):
+    """Send an informational notification using platform notifier with console fallback."""
+    notifier = NOTIFIERS.get(OS_NAME)
+    if notifier:
+        try:
+            notifier(title, message)
+            print(f"ℹ️  Reminder shown: {title}")
+            return
+        except Exception as e:
+            print(f"⚠️  Reminder notification failed: {e}")
+    print(f"\n{'='*60}\n{title}\n{message}\n{'='*60}\n")
+
+def thresholds_outdated_this_month() -> bool:
+    """Return True if thresholds are missing or last_updated is before the current month."""
+    try:
+        status = calculator.get_threshold_status()
+        if not status.get("exists"):
+            return True
+        last = datetime.fromisoformat(status.get("last_updated"))
+        now = datetime.now()
+        return (last.year, last.month) != (now.year, now.month)
+    except Exception:
+        # If anything goes wrong, be conservative and remind
+        return True
 
 
 def send_notification(pair, rate, rule):
@@ -287,16 +350,30 @@ def main():
     print("=" * 70)
     print()
     
-    # Check if thresholds need updating
-    if calculator.should_update():
-        print("🔄 Note: It's time to update dynamic thresholds!")
-        print("   Run: python update_thresholds.py")
-        print()
+    # Gentle monthly reminder (once per run on the 1st), plus weekly follow-ups if still outdated
+    global MONTHLY_REMINDER_SHOWN, NEXT_WEEKLY_REMINDER_AT
+    now = datetime.now()
+    if now.day == 1 and not MONTHLY_REMINDER_SHOWN and thresholds_outdated_this_month():
+        notify_info(
+            "Time to update thresholds",
+            "It's the 1st of the month.\nRun: python update_thresholds.py"
+        )
+        MONTHLY_REMINDER_SHOWN = True
+        # schedule first weekly follow-up in 7 days
+        NEXT_WEEKLY_REMINDER_AT = now + timedelta(days=7)
     
     # Main monitoring loop
     try:
         while True:
             check_rates()
+            # Weekly follow-up if still outdated (only once per 7 days)
+            if thresholds_outdated_this_month() and NEXT_WEEKLY_REMINDER_AT is not None:
+                if datetime.now() >= NEXT_WEEKLY_REMINDER_AT:
+                    notify_info(
+                        "Reminder: update thresholds",
+                        "Thresholds not updated this month yet.\nRun: python update_thresholds.py"
+                    )
+                    NEXT_WEEKLY_REMINDER_AT = datetime.now() + timedelta(days=7)
             print(f"\n⏳ Next check in {config.CHECK_INTERVAL_MINUTES} minutes...\n")
             time.sleep(config.CHECK_INTERVAL_SECONDS)
     except KeyboardInterrupt:
@@ -306,4 +383,88 @@ def main():
         print("Monitor stopped. Please check logs and restart.")
 
 if __name__ == "__main__":
-    main() 
+    # ----------------------------------------------------------------------
+    # Optional: manage macOS autostart via launchd
+    # ----------------------------------------------------------------------
+    parser = argparse.ArgumentParser(description="Exchange Rate Monitor")
+    parser.add_argument("--install-autostart", action="store_true", help="Install and load launchd to auto-start on login (macOS)")
+    parser.add_argument("--remove-autostart", action="store_true", help="Unload and remove launchd auto-start (macOS)")
+    parser.add_argument("--autostart-status", action="store_true", help="Print auto-start status (macOS)")
+    args = parser.parse_args()
+
+    def _plist_path() -> Path:
+        return Path.home() / "Library" / "LaunchAgents" / "com.simplereminder.exchangerate.plist"
+
+    def _ensure_plist():
+        project_dir = Path(__file__).resolve().parent
+        python_bin = Path(os.environ.get("VIRTUAL_ENV", project_dir / "venv")).joinpath("bin", "python")
+        if not python_bin.exists():
+            # Fallback to current interpreter
+            python_bin = Path(os.sys.executable)
+        script_path = Path(__file__).resolve()
+        plist_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.simplereminder.exchangerate</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{python_bin}</string>
+        <string>{script_path}</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>{project_dir}</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>{project_dir}/exchange_rate.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>{project_dir}/exchange_rate.err.log</string>
+</dict>
+</plist>
+"""
+        plist_path = _plist_path()
+        plist_path.parent.mkdir(parents=True, exist_ok=True)
+        plist_path.write_text(plist_content)
+        return plist_path
+
+    def _launchctl(*cmd):
+        try:
+            subprocess.run(["launchctl", *cmd], check=True)
+            return True
+        except Exception:
+            return False
+
+    if OS_NAME == "Darwin":
+        if args.install_autostart:
+            plist_path = _ensure_plist()
+            _launchctl("unload", str(plist_path))  # unload if already loaded
+            ok = _launchctl("load", str(plist_path))
+            print("✅ Autostart installed and loaded" if ok else "⚠️ Failed to load launchd service")
+            exit(0)
+        if args.remove_autostart:
+            plist_path = _plist_path()
+            _launchctl("unload", str(plist_path))
+            if plist_path.exists():
+                try:
+                    plist_path.unlink()
+                    print("✅ Autostart removed")
+                except Exception as e:
+                    print(f"⚠️ Failed to remove plist: {e}")
+            else:
+                print("ℹ️ Autostart not installed")
+            exit(0)
+        if args.autostart_status:
+            plist_path = _plist_path()
+            exists = plist_path.exists()
+            print(f"Plist: {plist_path} -> {'present' if exists else 'missing'}")
+            if exists:
+                # best-effort check
+                _launchctl("print", f"gui/{os.getuid()}/com.simplereminder.exchangerate")
+            exit(0)
+
+    # Run the normal monitor
+    main()
