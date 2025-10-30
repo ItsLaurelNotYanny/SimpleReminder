@@ -46,7 +46,8 @@ A smart notification system that monitors real-time exchange rates—alerting yo
 ```bash
 cd SimpleReminder
 
-# Run the setup script (handles everything automatically)
+# Use Python 3.11 (recommended). With pyenv, ensure `.python-version` is respected.
+# If you prefer a manual setup, run the commands below.
 ./setup.sh
 ```
 
@@ -55,7 +56,7 @@ The setup script will:
 - ✅ Install all dependencies
 - ✅ Check for .env file (optional)
 
-### Manual Setup
+### Manual Setup (Python 3.11)
 
 If you prefer to set up manually:
 
@@ -68,8 +69,8 @@ cd SimpleReminder
 #### 2. Create Virtual Environment
 
 ```bash
-# Create virtual environment
-python3 -m venv venv
+# Create virtual environment with Python 3.11
+python3.11 -m venv venv
 
 # Activate virtual environment
 source venv/bin/activate
@@ -532,6 +533,13 @@ Past year AUD/CNY rates: 4.40 to 4.95
 - Highest 10% of rates: 4.85 - 4.95 → **90th percentile = 4.85**
 
 **Result**: You get notified when rates enter the **best 20% of opportunities** (top 10% + bottom 10%)
+
+### macOS Notification Preview
+
+![macOS notifications showing terminal-notifier alerts and tests](docs/images/macos-notifications.png)
+
+- Uses `terminal-notifier` for native banners and falls back to AppleScript if needed.
+- Plays a reliable chime via `afplay` (default sound: Glass) so alerts are audible.
 
 ### Comparison with Static Thresholds
 

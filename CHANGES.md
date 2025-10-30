@@ -68,6 +68,9 @@
 - 5-minute update process
 - No manual threshold tuning
 
+### Docs
+- Added macOS notification screenshot: `docs/images/macos-notifications.png`
+
 ## 🔧 Technical Implementation
 
 ### Architecture

@@ -5,6 +5,7 @@
 ### 1. Install Dependencies
 ```bash
 cd SimpleReminder
+# Ensure Python 3.11 is used (see .python-version)
 ./setup.sh
 ```
 
@@ -59,6 +60,12 @@ AUD/CNY has fallen below your minimum threshold (4.5435)
 ```
 
 This means: Over the past 365 days, the rate was only this low or lower on about 10% of days. **Good time to exchange!**
+
+### macOS Preview
+
+![SimpleReminder macOS notification preview](docs/images/macos-notifications.png)
+
+- Native banners via `terminal-notifier`, plus a guaranteed chime using `afplay`.
 
 ## Customization
 
