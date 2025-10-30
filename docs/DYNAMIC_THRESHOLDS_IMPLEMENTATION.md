@@ -1,4 +1,6 @@
-# 📋 Changes Summary - Dynamic Threshold Implementation
+# 📋 Dynamic Threshold Implementation Details
+
+> **Technical documentation for the Dynamic Threshold feature implementation**
 
 ## 🎯 What Was Added
 
@@ -163,3 +165,4 @@ Phase 2 ideas:
 **Status**: ✅ Complete and tested  
 **Version**: 0.1.0  
 **Date**: October 29, 2025
+
