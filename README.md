@@ -10,7 +10,7 @@ A smart notification system that monitors real-time exchange rates—alerting yo
 
 - 📊 **Real-time Exchange Rate Monitoring** - Tracks 5 currency pairs
 - 🔔 **Cross-Platform Notifications** - Native alerts on macOS, Linux, and Windows
-  - macOS 现已优先使用 `terminal-notifier`，并在必要时使用 `afplay` 兜底播放系统音效，确保可听见的提示音
+  - macOS now prioritizes `terminal-notifier` and uses `afplay` as a fallback to play system sound effects, ensuring audible alerts
 - 🤖 **Dynamic Thresholds** - Auto-calculated based on historical data (10th percentile)
 - 🔑 **Secure API Key Management** - Uses `.env` file for credentials
 - ⚡ **Efficient Resource Usage** - Minimal CPU and network overhead
